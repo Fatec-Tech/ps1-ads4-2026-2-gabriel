@@ -108,7 +108,7 @@ async function carregarPacientesIniciais() {
 		dados.forEach((paciente) => {
 			adicionarPaciente(paciente.nome, paciente.email, paciente.nascimento);
 		});
-
+''
 		renderizarTabela();
 	} catch (erro) {
 		console.error('Não foi possível carregar os pacientes:', erro);
