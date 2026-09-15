@@ -57,7 +57,7 @@ async function carregarPacientesIniciais() {
        
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-		const resposta = await fetch('data/acientes.json');
+		const resposta = await fetch('data/pacientes.json');
 		//const resposta = await fetch('data/arquivo-inexistente.json'); teste de erro
 
 		console.log(resposta);
