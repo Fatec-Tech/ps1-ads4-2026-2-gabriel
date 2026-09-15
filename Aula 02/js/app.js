@@ -1,151 +1,130 @@
-// Array que guarda os pacientes cadastrados (em memória, só nesta sessão)
 const pacientes = [];
+let pacientesJson = 0;
+let pacientesManuais = 0;
 
-// Referências aos elementos do DOM que vamos usar várias vezes
 const formulario = document.getElementById('form-paciente');
 const tabela = document.getElementById('tabela-pacientes');
-const totalPacientes = document.getElementById('total-pacientes');
-const busca = document.getElementById('busca');
-const usarLocalStorage = document.getElementById('usar-localstorage');
+const mensagemCarregando = document.getElementById('carregando');
 
-// Função responsável por adicionar um paciente ao array
-function adicionarPaciente(nome, email, telefone, nascimento) {
-	const novoPaciente = { nome, email, telefone, nascimento };
-	pacientes.push(novoPaciente);
-	salvarPacientes();
+function adicionarPaciente(nome, email, nascimento) {
+	pacientes.push({ nome, email, nascimento });
 }
 
-function removerPaciente(indice) {
-	pacientes.splice(indice, 1);
-	salvarPacientes();
-	renderizarTabela();
+function atualizarContador() {
+    let contador = document.getElementById('contador-origem');
+
+    if (!contador) {
+        contador = document.createElement('p');
+        contador.id = 'contador-origem';
+        contador.className = 'text-muted';
+
+        document.querySelector('.container').appendChild(contador);
+    }
+
+    contador.innerHTML = `
+        Pacientes do arquivo JSON: ${pacientesJson} |
+        Pacientes cadastrados manualmente: ${pacientesManuais}
+    `;
 }
 
-function ordenarPorNome() {
-	pacientes.sort((a, b) => a.nome.localeCompare(b.nome));
-	salvarPacientes();
-	renderizarTabela();
-}
-
-function salvarPacientes() {
-	if (usarLocalStorage.checked) {
-		localStorage.setItem('pacientes', JSON.stringify(pacientes));
-	} else {
-		localStorage.removeItem('pacientes');
-	}
-}
-
-function carregarPacientes() {
-	const pacientesSalvos = localStorage.getItem('pacientes');
-
-	if (pacientesSalvos) {
-		pacientes.push(...JSON.parse(pacientesSalvos));
-		usarLocalStorage.checked = true;
-	}
-}
-
-// Função responsável por desenhar a tabela inteira a partir do array
 function renderizarTabela() {
-	tabela.innerHTML = ''; // limpa a tabela antes de redesenhar
-	totalPacientes.textContent = `Total de pacientes: ${pacientes.length}`;
+	tabela.innerHTML = '';
 
-	pacientes.forEach((paciente, indice) => {
-		if (!paciente.nome.toLowerCase().includes(busca.value.toLowerCase())) {
-			return;
-		}
-
+	pacientes.forEach((paciente) => {
 		const linha = document.createElement('tr');
-
 		linha.innerHTML = `
       <td>${paciente.nome}</td>
       <td>${paciente.email}</td>
-      <td>${paciente.telefone}</td>
       <td>${formatarData(paciente.nascimento)}</td>
-      <td>${calcularIdade(paciente.nascimento)}</td>
-      <td><button onclick="removerPaciente(${indice})">Remover</button></td>
     `;
-
 		tabela.appendChild(linha);
 	});
 }
 
-busca.addEventListener('input', () => {
-	renderizarTabela();
-});
-
-// Função utilitária só para formatar a data no padrão dd/mm/aaaa
 function formatarData(dataISO) {
 	const [ano, mes, dia] = dataISO.split('-');
 	return `${dia}/${mes}/${ano}`;
 }
 
-function calcularIdade(data) {
-	const [ano, mes, dia] = data.split('-').map(Number);
-	const hoje = new Date();
-	let idade = hoje.getFullYear() - ano;
 
-	if (hoje.getMonth() + 1 < mes || (hoje.getMonth() + 1 === mes && hoje.getDate() < dia)) {
-		idade--;
-	}
-
-	return idade;
-}
-
-// Nova função: busca os pacientes iniciais a partir do arquivo JSON
 async function carregarPacientesIniciais() {
 	try {
-		const resposta = await fetch('data/pacientes.json');
+
+		 
+        mensagemCarregando.textContent = 'Carregando pacientes...';
+		
+
+       
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+		const resposta = await fetch('data/acientes.json');
+		//const resposta = await fetch('data/arquivo-inexistente.json'); teste de erro
+
 		console.log(resposta);
 
-		// Nem toda resposta é sucesso — precisamos checar antes de usar
+		
 		if (!resposta.ok) {
 			throw new Error(`Erro HTTP: ${resposta.status}`);
 		}
 
-		const dados = await resposta.json(); // converte a resposta em objeto JS
+		const dados = await resposta.json(); 
+pacientesJson = dados.length;
 
-		// Adiciona cada paciente vindo do arquivo ao nosso array local
-		dados.forEach((paciente) => {
-			adicionarPaciente(paciente.nome, paciente.email, paciente.nascimento);
-		});
-''
-		renderizarTabela();
+if (dados.length === 0) {
+    tabela.innerHTML = `
+        <tr>
+            <td colspan="3" class="text-center">
+                Nenhum paciente cadastrado ainda
+            </td>
+        </tr>
+    `;
+
+    atualizarContador();
+
+    mensagemCarregando.textContent = 'Dados carregados com sucesso.';
+
+    return;
+}
+
+dados.forEach((paciente) => {
+    adicionarPaciente(paciente.nome, paciente.email, paciente.nascimento);
+});
+
+renderizarTabela();
+atualizarContador();
 	} catch (erro) {
 		console.error('Não foi possível carregar os pacientes:', erro);
-		mensagemCarregando.textContent =
-			'Erro ao carregar pacientes. Veja o console para mais detalhes.';
-		return; // sai da função sem esconder a mensagem de erro
+		const mensagemErro =
+			'Não foi possível carregar os pacientes porque os dados não foram encontrados. Verifique o arquivo pacientes.json e tente novamente';
+
+		mensagemCarregando.textContent = '';
+		tabela.innerHTML = `
+			<tr>
+				<td colspan="3" class="text-center">${mensagemErro}</td>
+			</tr>
+		`;
+		return; 
 	}
 
 	mensagemCarregando.textContent =
 		'Dados carregados com sucesso.';
-	// mensagemCarregando.style.display = 'none'; // esconde "Carregando..." em caso de sucesso
+	
 }
 
-
-// Evento disparado quando o formulário é enviado
 formulario.addEventListener('submit', (event) => {
-	event.preventDefault(); // evita o recarregamento da página
+	event.preventDefault();
 
 	const nome = document.getElementById('nome').value;
 	const email = document.getElementById('email').value;
-	const telefone = document.getElementById('telefone').value;
 	const nascimento = document.getElementById('nascimento').value;
-	const salvarNoNavegador = usarLocalStorage.checked;
 
-	for (let i = 0; i < pacientes.length; i++) {
-		if (pacientes[i].email === email) {
-			alert('Este e-mail já está cadastrado.');
-			return;
-		}
-	}
-
-	adicionarPaciente(nome, email, telefone, nascimento);
+	adicionarPaciente(nome, email, nascimento);
 	renderizarTabela();
 
-	formulario.reset(); // limpa os campos do formulário
-	usarLocalStorage.checked = salvarNoNavegador;
+	pacientesManuais++;
+	atualizarContador();
+	formulario.reset();
 });
 
-carregarPacientes();
-renderizarTabela();
+
+carregarPacientesIniciais();
